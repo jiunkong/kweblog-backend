@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm"
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, CreateDateColumn } from "typeorm"
 import { UserEntity } from "./UserEntity"
 import { PostEntity } from "./PostEntity"
 
@@ -12,9 +12,12 @@ export class CommentEntity {
     @Column('text')
     content: string
 
-    @ManyToOne(() => UserEntity, (user) => user.comments)
-    user: UserEntity
+    @ManyToOne(() => UserEntity, (author) => author.comments)
+    author: UserEntity
 
     @ManyToOne(() => PostEntity, (post) => post.comments)
     post: PostEntity
+
+    @CreateDateColumn()
+    createdDate: Date
 }

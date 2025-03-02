@@ -4,8 +4,8 @@ import { Repository, UpdateResult } from 'typeorm';
 import { UserEntity } from 'src/database/UserEntity';
 import { SessionEntity } from 'src/database/SessionEntity';
 import { PostEntity } from 'src/database/PostEntity';
-import { CommentEntity } from 'src/database/CommentEntity';
 import { LikeEntity } from 'src/database/LIkedEntity';
+import { getUserBySessionId } from 'src/util';
 
 @Injectable()
 export class PostService {
@@ -16,30 +16,12 @@ export class PostService {
         private sessionRepository: Repository<SessionEntity>,
         @InjectRepository(PostEntity)
         private postRepository: Repository<PostEntity>,
-        @InjectRepository(CommentEntity)
-        private commentRepository: Repository<CommentEntity>,
         @InjectRepository(LikeEntity)
         private likeRepository: Repository<LikeEntity>
     ) {}
 
-    async getUserBySessionId(sessionId: string, posts: boolean = false, likes: boolean = false): Promise<UserEntity> {
-        const session = await this.sessionRepository.findOne({
-            where: {
-                sessionId: sessionId
-            },
-            relations: {
-                user: {
-                    posts: posts,
-                    likes: likes
-                }
-            }
-        })
-        if (!session) throw new BadRequestException("잘못된 세션입니다")
-        return session?.user
-    }
-
     async create(sessionId: string, title: string, content: string, images: string[]): Promise<PostEntity> {
-        const user = await this.getUserBySessionId(sessionId)
+        const user = await getUserBySessionId(this.sessionRepository, sessionId)
 
         const post = this.postRepository.create({
             content: content,
@@ -67,7 +49,7 @@ export class PostService {
     }
 
     async isLiking(postId: number, sessionId: string): Promise<boolean> {
-        const user = await this.getUserBySessionId(sessionId)
+        const user = await getUserBySessionId(this.sessionRepository, sessionId)
         const post = await this.postRepository.findOne({
             where: {
                 postId: postId
@@ -84,7 +66,7 @@ export class PostService {
     }
 
     async toggleLike(postId: number, sessionId: string) {
-        const user = await this.getUserBySessionId(sessionId, false, true)
+        const user = await getUserBySessionId(this.sessionRepository, sessionId, false, true)
         const post = await this.postRepository.findOne({
             where: {
                 postId: postId
@@ -113,16 +95,13 @@ export class PostService {
     }
 
     async getUserPosts(username: string): Promise<PostEntity[] | null> {
-        const user = await this.userRepository.findOne({
-            where: {
-                username: username
-            },
-            relations: {
-                posts: true
-            }
-        })
-        return user?.posts.sort((a, b) => {
-            return (a.createdDate > b.createdDate ? -1 : 1)
-        }) ?? null
+        const user = await this.userRepository.createQueryBuilder("user")
+            .leftJoinAndSelect("user.posts", "post")
+            .orderBy("post.createdDate", "DESC")
+            .where("user.username = :username", { username })
+            .getOne()
+        if (!user) throw new BadRequestException("존재하지 않는 사용자입니다")
+
+        return user.posts
     }
 }

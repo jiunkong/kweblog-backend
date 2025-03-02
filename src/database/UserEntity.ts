@@ -31,7 +31,7 @@ export class UserEntity {
     @OneToMany(() => LikeEntity, (like) => like.user)
     likes: LikeEntity[]
 
-    @OneToMany(() => CommentEntity, (comment) => comment.user)
+    @OneToMany(() => CommentEntity, (comment) => comment.author)
     comments: CommentEntity[]
 }
 

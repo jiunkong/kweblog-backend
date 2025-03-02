@@ -5,6 +5,7 @@ import * as fs from "fs"
 import { v4 as uuidv4 } from 'uuid'
 import { PostService } from './post.service';
 import { Request, Response } from 'express';
+import { getSessionId } from 'src/util';
 
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024
 const MAX_IMAGE_COUNT = 10
@@ -17,12 +18,6 @@ interface PostDTO {
 @Controller('post')
 export class PostController {
     constructor(private postService: PostService) {}
-
-    getSessionId(req: Request): string {
-        const sessionId = req.cookies.sessionId
-        if (!sessionId) throw new BadRequestException("세션이 필요합니다")
-        return sessionId
-    }
 
     @Post('write')
     @UseInterceptors(FilesInterceptor('images', MAX_IMAGE_COUNT, {
@@ -42,7 +37,7 @@ export class PostController {
         @Req() req: Request,
         @UploadedFiles() images: Express.Multer.File[]
     ) {
-        const sessionId = this.getSessionId(req)
+        const sessionId = getSessionId(req)
         if (!(body.title && body.content)) throw new BadRequestException("제목 또는 내용이 없습니다")
         let fileNames: string[] = []
         if (images) {
@@ -77,7 +72,8 @@ export class PostController {
             image: post.images.length > 0,
             title: post.title,
             createdDate: post.createdDate,
-            likes: post.likes.length
+            likes: post.likes.length,
+            comments: post.comments.length
         }
     }
 
@@ -102,7 +98,7 @@ export class PostController {
         @Req() req: Request,
         @Param('id') id: number
     ) {
-        const sessionId = this.getSessionId(req)
+        const sessionId = getSessionId(req)
         return await this.postService.isLiking(id, sessionId)
     }
 
@@ -111,7 +107,7 @@ export class PostController {
         @Req() req: Request,
         @Param('id') id: number
     ) {
-        const sessionId = this.getSessionId(req)
+        const sessionId = getSessionId(req)
         this.postService.toggleLike(id, sessionId)
     }
 
