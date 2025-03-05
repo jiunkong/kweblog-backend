@@ -203,6 +203,13 @@ export class UserController {
         return await this.userService.getRelation(sessionId, username)
     }
 
+    @Get('/postCount')
+    async getPostCount(
+        @Query('username') username: string
+    ) {
+        return await this.userService.getPostCount(username)
+    }
+
     @Get('/friends')
     async getFriends(
         @Req() req: Request

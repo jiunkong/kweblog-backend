@@ -16,6 +16,20 @@ export class UserService {
         @InjectRepository(NotificationEntity)
         private notificationRepository: Repository<NotificationEntity>
     ) {}
+
+    async getPostCount(username: string): Promise<number> {
+        const user = await this.userRepository.findOne({
+            where: {
+                username: username
+            },
+            relations: {
+                posts: true
+            }
+        })
+        if (!user) throw new BadRequestException("존재하지 않는 유저입니다")
+
+        return user.posts.length
+    }
     
     async signin(id: string, pw: string): Promise<{session: SessionEntity, username: string} | null> {
         const user = await this.userRepository.findOne({
@@ -285,10 +299,15 @@ export class UserService {
     }
 
     async search(query: string): Promise<UserEntity[]> {
-        return await this.userRepository.find({
-            where: {
-                username: Like(`%${query}%`)
-            }
-        })
+        return await this.userRepository.createQueryBuilder("user")
+            .where(`user.username LIKE '%${query}%'`)
+            .leftJoin("user.posts", "post")
+            .addOrderBy(`CASE WHEN user.username = '${query}' THEN 0
+                            WHEN user.username LIKE '${query}%' THEN 1
+                            WHEN user.username LIKE '%${query}%' THEN 2
+                            WHEN user.username LIKE '%${query}' THEN 3
+                            ELSE 4 END`, 'ASC')
+            .addOrderBy('COUNT(post)', 'DESC')
+            .getMany()
     }
 }

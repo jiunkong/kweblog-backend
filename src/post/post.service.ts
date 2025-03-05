@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, UpdateResult } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { UserEntity } from 'src/database/UserEntity';
 import { SessionEntity } from 'src/database/SessionEntity';
 import { PostEntity } from 'src/database/PostEntity';
 import { LikeEntity } from 'src/database/LikeEntity';
 import { getUserBySessionId } from 'src/util';
 import { NotificationEntity } from 'src/database/NotificationEntity';
+
+const PAGE_SIZE = 10
 
 @Injectable()
 export class PostService {
@@ -68,6 +70,10 @@ export class PostService {
         return post.likes.some((likeEntity) => likeEntity.user.uid == user.uid)
     }
 
+    async getCount(): Promise<number> {
+        return await this.postRepository.count()
+    }
+
     async toggleLike(postId: number, sessionId: string) {
         const user = await getUserBySessionId(this.sessionRepository, sessionId, false, true)
         const post = await this.postRepository.findOne({
@@ -109,14 +115,17 @@ export class PostService {
         }
     }
 
-    async getUserPosts(username: string): Promise<PostEntity[] | null> {
-        const user = await this.userRepository.createQueryBuilder("user")
-            .leftJoinAndSelect("user.posts", "post")
+    async getPostList(page: number, username?: string): Promise<PostEntity[]> {
+        let temp = this.postRepository.createQueryBuilder("post")
+            .leftJoinAndSelect("post.author", "author")
+            .leftJoinAndSelect("post.likes", "likes")
+            .leftJoinAndSelect("post.comments", "comments")
             .orderBy("post.createdDate", "DESC")
-            .where("user.username = :username", { username })
-            .getOne()
-        if (!user) throw new BadRequestException("존재하지 않는 사용자입니다")
+        if (username) temp = temp.where("author.username = :username", { username })
 
-        return user.posts
+        const posts = await temp.take(PAGE_SIZE).skip(PAGE_SIZE * (page - 1)).getMany()
+        if (!posts) throw new BadRequestException("존재하지 않는 사용자입니다")
+
+        return posts
     }
 }

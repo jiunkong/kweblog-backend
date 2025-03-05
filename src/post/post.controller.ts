@@ -51,30 +51,28 @@ export class PostController {
 
     @Get('/userPosts')
     async userPosts(
-        @Query('username') username: string
+        @Query('username') username: string,
+        @Query('page') page: number
     ) {
-        const posts = await this.postService.getUserPosts(username)
-        if (!posts) throw new BadRequestException("존재하지 않는 사용자입니다")
-        let postIdList: number[] = []
+        const posts = await this.postService.getPostList(page, username)
+        const result: any[] = []
         posts.forEach((post) => {
-            postIdList.push(post.postId)
+            result.push({
+                postId: post.postId,
+                title: post.title,
+                image: post.images.length > 0,
+                createdDate: post.createdDate,
+                likes: post.likes.length,
+                comments: post.comments.length,
+                author: post.author.username
+            })
         })
-        return postIdList
+        return result
     }
 
-    @Get('/thumbnail')
-    async thumbnail(
-        @Query('postId') postId: number
-    ) {
-        const post = await this.postService.getPost(postId)
-        if (!post) throw new BadRequestException("존재하지 않는 게시물입니다")
-        return {
-            image: post.images.length > 0,
-            title: post.title,
-            createdDate: post.createdDate,
-            likes: post.likes.length,
-            comments: post.comments.length
-        }
+    @Get('/count')
+    async getCount() {
+        return await this.postService.getCount()
     }
 
     @Get('/:id')
