@@ -5,12 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from 'src/database/UserEntity';
 import { PostEntity } from 'src/database/PostEntity';
 import { SessionEntity } from 'src/database/SessionEntity';
-import { LikeEntity } from 'src/database/LIkedEntity';
+import { LikeEntity } from 'src/database/LikeEntity';
 import { CommentEntity } from 'src/database/CommentEntity';
+import { NotificationEntity } from 'src/database/NotificationEntity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity, PostEntity, SessionEntity, LikeEntity, CommentEntity])
+    TypeOrmModule.forFeature([UserEntity, PostEntity, SessionEntity, LikeEntity, CommentEntity, NotificationEntity])
   ],
   controllers: [PostController],
   providers: [PostService]

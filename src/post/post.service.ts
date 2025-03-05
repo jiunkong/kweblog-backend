@@ -4,8 +4,9 @@ import { Repository, UpdateResult } from 'typeorm';
 import { UserEntity } from 'src/database/UserEntity';
 import { SessionEntity } from 'src/database/SessionEntity';
 import { PostEntity } from 'src/database/PostEntity';
-import { LikeEntity } from 'src/database/LIkedEntity';
+import { LikeEntity } from 'src/database/LikeEntity';
 import { getUserBySessionId } from 'src/util';
+import { NotificationEntity } from 'src/database/NotificationEntity';
 
 @Injectable()
 export class PostService {
@@ -17,7 +18,9 @@ export class PostService {
         @InjectRepository(PostEntity)
         private postRepository: Repository<PostEntity>,
         @InjectRepository(LikeEntity)
-        private likeRepository: Repository<LikeEntity>
+        private likeRepository: Repository<LikeEntity>,
+        @InjectRepository(NotificationEntity)
+        private notificationRepository: Repository<NotificationEntity>
     ) {}
 
     async create(sessionId: string, title: string, content: string, images: string[]): Promise<PostEntity> {
@@ -74,7 +77,8 @@ export class PostService {
             relations: {
                 likes: {
                     user: true
-                }
+                },
+                author: true
             }
         })
         if (!post) throw new BadRequestException("존재하지 않는 게시물입니다")
@@ -86,6 +90,17 @@ export class PostService {
                 id: like.id
             })
         } else {
+            if (user.uid !== post.author.uid) {
+                const newNotification = this.notificationRepository.create({
+                    type: 'like',
+                    sender: user,
+                    receiver: post.author,
+                    postId: post.postId
+                })
+                this.notificationRepository.save(newNotification)
+            }
+            
+
             const newLike = this.likeRepository.create({
                 user: user,
                 post: post

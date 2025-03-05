@@ -8,7 +8,7 @@ const COMMENT_PAGE_SIZE = 5
 export class CommentController {
     constructor(private commentService: CommentService) {}
 
-    @Get('/:id')
+    @Get('/:id/count')
     async getCommentCount(
         @Param('id') postId: number
     ) {
@@ -23,15 +23,14 @@ export class CommentController {
     ) {
         if (!content) throw new BadRequestException("내용이 없습니다")
         const sessionId = getSessionId(req)
-        this.commentService.writeComment(sessionId, postId, content)
+        await this.commentService.writeComment(sessionId, postId, content)
     }
 
-    @Get('/:id/:page')
+    @Get('/:id')
     async getComments(
-        @Param('id') postId: number,
-        @Param('page') page: number
+        @Param('id') postId: number
     ) {
-        const comments = await this.commentService.getComments(postId, page)
+        const comments = await this.commentService.getComments(postId)
         return comments.map((comment) => {
             return {
                 id: comment.id,

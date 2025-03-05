@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from "typeorm";
 import { PostEntity } from "./PostEntity";
-import { LikeEntity } from "./LIkedEntity";
+import { LikeEntity } from "./LikeEntity";
 import { CommentEntity } from "./CommentEntity";
+import { NotificationEntity } from "./NotificationEntity";
 
 @Entity({
     name: 'users'
@@ -33,5 +34,15 @@ export class UserEntity {
 
     @OneToMany(() => CommentEntity, (comment) => comment.author)
     comments: CommentEntity[]
+
+    @OneToMany(() => NotificationEntity, (notification) => notification.sender)
+    sendedNotifications: NotificationEntity[]
+
+    @OneToMany(() => NotificationEntity, (notification) => notification.receiver)
+    receivedNotifications: NotificationEntity[]
+
+    @ManyToMany(() => UserEntity)
+    @JoinTable()
+    friends: UserEntity[]
 }
 

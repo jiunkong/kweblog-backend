@@ -26,15 +26,6 @@ export class UserController {
         return sessionId
     }
 
-    async getUserBySession(req: Request): Promise<UserEntity> {
-        const sessionId = this.getSessionId(req)
-        
-        const user = await this.userService.getUserBySession(sessionId)
-        if (!user) throw new BadRequestException("잘못된 세션입니다")
-
-        return user
-    }
-
     @Get('/existedId')
     async existedId(@Query('id') id: string) {
         if (!id) throw new BadRequestException()
@@ -64,18 +55,25 @@ export class UserController {
         @Query('username') username: string
     ) {
         const result = await this.userService.findOneByUsername(username)
-        if (!result) throw new BadRequestException("존재하지 않는 사용자자입니다")
+        if (!result) throw new BadRequestException("존재하지 않는 사용자입니다")
         return result.introduction
     }
 
-    @Get('/isSelf')
-    async username(
-        @Query('username') username: string,
-        @Req() req: Request,
+    @Get('/notification')
+    async getNotificaiton(
+        @Req() req: Request
     ) {
-        const user = await this.getUserBySession(req)
-        
-        return username == user.username
+        const sessionId = this.getSessionId(req)
+        const notifications = await this.userService.getNotifications(sessionId)
+        return notifications.map((notification) => {
+            return {
+                id: notification.id,
+                type: notification.type,
+                sender: notification.sender.username,
+                postId: notification.postId,
+                accepted: notification.accepted
+            }
+        })
     }
 
     @Get('/signout')
@@ -124,14 +122,16 @@ export class UserController {
         let ret: boolean = true
 
         if (body.introduction) {
-            const user = await this.getUserBySession(req)
+            const sessionId = this.getSessionId(req)
+            const user = await this.userService.getUserBySession(sessionId)
             const result = await this.userService.updateIntroduction(user.uid, req.body.introduction)
             if (!(result.affected && result.affected > 0)) ret = false
         }
 
         if (image) {
-            const user = await this.getUserBySession(req)
-            if (user?.image) await fs.rmSync("public/profile/" + user.image)
+            const sessionId = this.getSessionId(req)
+            const user = await this.userService.getUserBySession(sessionId)
+            if (user.image) await fs.rmSync("public/profile/" + user.image)
             
             const result = await this.userService.updateImage(user.uid, image.filename)
             if (!(result.affected && result.affected > 0)) ret = false
@@ -177,7 +177,10 @@ export class UserController {
                 image: image.filename,
                 posts: [],
                 likes: [],
-                comments: []
+                comments: [],
+                receivedNotifications: [],
+                sendedNotifications: [],
+                friends: []
             })
 
             res.cookie("sessionId", result.session.sessionId, {
@@ -189,5 +192,59 @@ export class UserController {
             removeImage()
             throw new InternalServerErrorException()
         }
+    }
+
+    @Get('/relation')
+    async getRelationWith(
+        @Query('username') username: string,
+        @Req() req: Request
+    ) {
+        const sessionId = this.getSessionId(req)
+        return await this.userService.getRelation(sessionId, username)
+    }
+
+    @Get('/friends')
+    async getFriends(
+        @Req() req: Request
+    ) {
+        const sessionId = this.getSessionId(req)
+        return await this.userService.getFriends(sessionId)
+    }
+
+    @Post('/requestFriend')
+    async requestFriend(
+        @Query('username') username: string,
+        @Req() req: Request
+    ) {
+        const sessionId = this.getSessionId(req)
+        await this.userService.requestFriend(sessionId, username)
+    }
+
+    @Post('/acceptFriend')
+    async acceptFriend(
+        @Query('nid') nid: number,
+        @Req() req: Request
+    ) {
+        const sessionId = this.getSessionId(req)
+        await this.userService.acceptFriend(sessionId, nid)
+    }
+
+    @Post('/breakFriend')
+    async breakFriend(
+        @Query('username') username: string,
+        @Req() req: Request
+    ) {
+        const sessionId = this.getSessionId(req)
+        await this.userService.breakFriend(sessionId, username)
+    }
+
+    @Get('/search')
+    async search(
+        @Query('query') query: string
+    ) {
+        const result = await this.userService.search(query)
+        return result.map((user) => {
+            return user.username
+        })
     }
 }
