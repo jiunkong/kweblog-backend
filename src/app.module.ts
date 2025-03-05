@@ -7,8 +7,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { TypeORMConfig } from './typeormConfig';
 import { PostModule } from './post/post.module';
-import { CommentController } from './comment/comment.controller';
-import { CommentService } from './comment/comment.service';
 import { CommentModule } from './comment/comment.module';
 
 @Module({
