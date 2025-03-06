@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { UserService } from './user.service';
 import { Request, Response } from 'express';
 import * as fs from "fs"
+import { ConfigService } from '@nestjs/config';
 
 interface SignupDTO {
     id: string,
@@ -17,7 +18,7 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
 @Controller('user')
 export class UserController {
-    constructor(private userService: UserService) {}
+    constructor(private userService: UserService, private configService: ConfigService) {}
 
     getSessionId(req: Request): string {
         const sessionId = req.cookies.sessionId
@@ -96,6 +97,7 @@ export class UserController {
         response.cookie("sessionId", res.session.sessionId, {
             httpOnly: true,
             sameSite: "strict",
+            domain: this.configService.get("COOKIE_DOMAIN"),
             secure: true
         })
 
@@ -187,6 +189,7 @@ export class UserController {
             res.cookie("sessionId", result.session.sessionId, {
                 httpOnly: true,
                 sameSite: "strict",
+                domain: this.configService.get("COOKIE_DOMAIN"),
                 secure: true
             })
 
