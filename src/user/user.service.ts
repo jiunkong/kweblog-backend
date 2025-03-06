@@ -5,6 +5,7 @@ import { SessionEntity } from 'src/database/SessionEntity';
 import { DeleteResult, Like, Repository, UpdateResult } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid'
 import { NotificationEntity } from 'src/database/NotificationEntity';
+import { PostEntity } from 'src/database/PostEntity';
 
 @Injectable()
 export class UserService {
@@ -299,15 +300,29 @@ export class UserService {
     }
 
     async search(query: string): Promise<UserEntity[]> {
-        return await this.userRepository.createQueryBuilder("user")
-            .where(`user.username LIKE '%${query}%'`)
-            .leftJoin("user.posts", "post")
-            .addOrderBy(`CASE WHEN user.username = '${query}' THEN 0
-                            WHEN user.username LIKE '${query}%' THEN 1
-                            WHEN user.username LIKE '%${query}%' THEN 2
-                            WHEN user.username LIKE '%${query}' THEN 3
-                            ELSE 4 END`, 'ASC')
-            .addOrderBy('COUNT(post)', 'DESC')
-            .getMany()
+        return await this.userRepository
+            .createQueryBuilder("user")
+            .leftJoin(PostEntity, "post", "post.author.uid = user.uid")
+            .where("user.username LIKE :query", { query: `%${query}%` })
+            .addSelect("COUNT(post.postId)", "postCount")
+            .groupBy("user.uid")
+            .addOrderBy(
+                `CASE 
+                    WHEN user.username = :query THEN 0
+                    WHEN user.username LIKE :queryStart THEN 1
+                    WHEN user.username LIKE :queryMiddle THEN 2
+                    WHEN user.username LIKE :queryEnd THEN 3
+                    ELSE 4 
+                END`,
+                "ASC"
+            )
+            .addOrderBy("postCount", "DESC")
+            .setParameters({ 
+                query, 
+                queryStart: `${query}%`, 
+                queryMiddle: `%${query}%`, 
+                queryEnd: `%${query}` 
+            })
+            .getMany();
     }
 }
