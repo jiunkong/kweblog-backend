@@ -302,8 +302,8 @@ export class UserService {
     async search(query: string): Promise<UserEntity[]> {
         return await this.userRepository
             .createQueryBuilder("user")
-            .leftJoin(PostEntity, "post", "post.author.uid = user.uid")
-            .where("user.username LIKE :query", { query: `%${query}%` })
+            .leftJoin("user.posts", "post")
+            .where("user.username LIKE :querylike", { querylike: `%${query}%` })
             .addSelect("COUNT(post.postId)", "postCount")
             .groupBy("user.uid")
             .addOrderBy(
