@@ -3,6 +3,7 @@ import { PostEntity } from "./PostEntity";
 import { LikeEntity } from "./LikeEntity";
 import { CommentEntity } from "./CommentEntity";
 import { NotificationEntity } from "./NotificationEntity";
+import { SaveEntity } from "./SaveEntity";
 
 @Entity({
     name: 'users'
@@ -28,6 +29,9 @@ export class UserEntity {
 
     @OneToMany(() => PostEntity, (post) => post.author)
     posts: PostEntity[]
+
+    @OneToMany(() => SaveEntity, (save) => save.user)
+    saves: SaveEntity[]
 
     @OneToMany(() => LikeEntity, (like) => like.user)
     likes: LikeEntity[]

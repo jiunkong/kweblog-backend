@@ -3,19 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CommentEntity } from 'src/database/CommentEntity';
 import { NotificationEntity } from 'src/database/NotificationEntity';
 import { PostEntity } from 'src/database/PostEntity';
-import { SessionEntity } from 'src/database/SessionEntity';
-import { getUserBySessionId } from 'src/util';
+import { UserService } from 'src/user/user.service';
 import { Repository } from 'typeorm';
 
 @Injectable()
 export class CommentService {
     constructor(
+        private userService: UserService,
         @InjectRepository(CommentEntity)
         private commentRepository: Repository<CommentEntity>,
         @InjectRepository(PostEntity)
         private postRepository: Repository<PostEntity>,
-        @InjectRepository(SessionEntity)
-        private sessionRepository: Repository<SessionEntity>,
         @InjectRepository(NotificationEntity)
         private notificationRepository: Repository<NotificationEntity>
     ) {}
@@ -49,7 +47,7 @@ export class CommentService {
     }
 
     async writeComment(sessionId: string, postId: number, content: string): Promise<CommentEntity> {
-        const user = await getUserBySessionId(this.sessionRepository, sessionId)
+        const user = await this.userService.getUserBySessionId(sessionId)
         const post = await this.postRepository.findOne({
             where: {
                 postId: postId

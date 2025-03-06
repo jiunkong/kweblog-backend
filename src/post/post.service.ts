@@ -1,22 +1,18 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
-import { UserEntity } from 'src/database/UserEntity';
-import { SessionEntity } from 'src/database/SessionEntity';
+import { Repository } from 'typeorm';
 import { PostEntity } from 'src/database/PostEntity';
 import { LikeEntity } from 'src/database/LikeEntity';
-import { getUserBySessionId } from 'src/util';
 import { NotificationEntity } from 'src/database/NotificationEntity';
+import { UserService } from 'src/user/user.service';
 
 const PAGE_SIZE = 10
 
 @Injectable()
 export class PostService {
     constructor(
-        @InjectRepository(UserEntity)
-        private userRepository: Repository<UserEntity>,
-        @InjectRepository(SessionEntity)
-        private sessionRepository: Repository<SessionEntity>,
+        @Inject(forwardRef(() => UserService))
+        private userService: UserService,
         @InjectRepository(PostEntity)
         private postRepository: Repository<PostEntity>,
         @InjectRepository(LikeEntity)
@@ -26,7 +22,7 @@ export class PostService {
     ) {}
 
     async create(sessionId: string, title: string, content: string, images: string[]): Promise<PostEntity> {
-        const user = await getUserBySessionId(this.sessionRepository, sessionId)
+        const user = await this.userService.getUserBySessionId(sessionId)
 
         const post = this.postRepository.create({
             content: content,
@@ -54,7 +50,7 @@ export class PostService {
     }
 
     async isLiking(postId: number, sessionId: string): Promise<boolean> {
-        const user = await getUserBySessionId(this.sessionRepository, sessionId)
+        const user = await this.userService.getUserBySessionId(sessionId)
         const post = await this.postRepository.findOne({
             where: {
                 postId: postId
@@ -75,7 +71,7 @@ export class PostService {
     }
 
     async toggleLike(postId: number, sessionId: string) {
-        const user = await getUserBySessionId(this.sessionRepository, sessionId, false, true)
+        const user = await this.userService.getUserBySessionId(sessionId, false, true)
         const post = await this.postRepository.findOne({
             where: {
                 postId: postId

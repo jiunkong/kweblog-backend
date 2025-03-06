@@ -183,7 +183,8 @@ export class UserController {
                 comments: [],
                 receivedNotifications: [],
                 sendedNotifications: [],
-                friends: []
+                friends: [],
+                saves: []
             })
 
             res.cookie("sessionId", result.session.sessionId, {
@@ -211,9 +212,58 @@ export class UserController {
 
     @Get('/postCount')
     async getPostCount(
-        @Query('username') username: string
+        @Query('username') username: string,
+        @Query('type') type: string
     ) {
-        return await this.userService.getPostCount(username)
+        return await this.userService.getPostCount(username, (type === "savedPosts" ? type : "userPosts"))
+    }
+
+    @Get('/savedPosts')
+    async savedPosts(
+        @Query('username') username: string,
+        @Query('page') page: number
+    ) {
+        const posts = await this.userService.getSavedPostList(page, username)
+        const result: any[] = []
+        posts.forEach((post) => {
+            result.push({
+                postId: post.postId,
+                title: post.title,
+                image: post.images.length > 0,
+                createdDate: post.createdDate,
+                likes: post.likes.length,
+                comments: post.comments.length,
+                author: post.author.username
+            })
+        })
+        return result
+    }
+
+    @Get('/isSaved')
+    async isSaved(
+        @Query('postId') postId: number,
+        @Req() req: Request
+    ) {
+        const sessionId = this.getSessionId(req)
+        return await this.userService.isSaved(sessionId, postId)
+    }
+
+    @Post('/savePost')
+    async savePost(
+        @Req() req: Request,
+        @Query('postId') postId: number
+    ) {
+        const sessionId = this.getSessionId(req)
+        await this.userService.savePost(sessionId, postId)
+    }
+
+    @Post('/deleteSavedPost')
+    async deleteSavedPost(
+        @Req() req: Request,
+        @Query('postId') postId: number
+    ) {
+        const sessionId = this.getSessionId(req)
+        await this.userService.deleteSavedPost(sessionId, postId)
     }
 
     @Get('/friends')

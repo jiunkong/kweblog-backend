@@ -1,35 +1,60 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/database/UserEntity';
 import { SessionEntity } from 'src/database/SessionEntity';
-import { DeleteResult, Like, Repository, UpdateResult } from 'typeorm';
+import { DeleteResult, Repository, UpdateResult } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid'
 import { NotificationEntity } from 'src/database/NotificationEntity';
 import { PostEntity } from 'src/database/PostEntity';
+import { SaveEntity } from 'src/database/SaveEntity';
+import { PostService } from 'src/post/post.service';
 
+const PAGE_SIZE = 10
 @Injectable()
 export class UserService {
     constructor(
+        @Inject(forwardRef(() => PostService))
+        private postService: PostService,
         @InjectRepository(UserEntity)
         private userRepository: Repository<UserEntity>,
         @InjectRepository(SessionEntity)
         private sessionRepository: Repository<SessionEntity>,
         @InjectRepository(NotificationEntity)
-        private notificationRepository: Repository<NotificationEntity>
+        private notificationRepository: Repository<NotificationEntity>,
+        @InjectRepository(SaveEntity)
+        private saveRepository: Repository<SaveEntity>
     ) {}
 
-    async getPostCount(username: string): Promise<number> {
+    async getPostCount(username: string, type: string): Promise<number> {
         const user = await this.userRepository.findOne({
             where: {
                 username: username
             },
             relations: {
-                posts: true
+                posts: (type === "userPosts"),
+                saves: (type === "savedPosts")
             }
         })
         if (!user) throw new BadRequestException("존재하지 않는 유저입니다")
 
-        return user.posts.length
+        if (type === "userPosts") return user.posts.length
+        else return user.saves.length
+    }
+    
+    async getUserBySessionId(sessionId: string, posts: boolean = false, likes: boolean = false): Promise<UserEntity> {
+        const session = await this.sessionRepository.findOne({
+            where: {
+                sessionId: sessionId
+            },
+            relations: {
+                user: {
+                    posts: posts,
+                    likes: likes
+                }
+            }
+        })
+        if (!session) throw new BadRequestException("잘못된 세션입니다")
+        return session?.user
     }
     
     async signin(id: string, pw: string): Promise<{session: SessionEntity, username: string} | null> {
@@ -324,5 +349,65 @@ export class UserService {
                 queryEnd: `%${query}` 
             })
             .getMany();
+    }
+
+    async getSavedPostList(page: number, username?: string): Promise<PostEntity[]> {
+        const user = await this.userRepository.createQueryBuilder("user")
+            .leftJoinAndSelect("user.saves", "save")
+            .leftJoinAndSelect("save.post", "post")
+            .leftJoinAndSelect("post.author", "author")
+            .leftJoinAndSelect("post.likes", "likes")
+            .leftJoinAndSelect("post.comments", "comments")
+            .orderBy("save.createdDate", "DESC")
+            .where("user.username = :username", { username })
+            .take(PAGE_SIZE)
+            .skip(PAGE_SIZE * (page - 1))
+            .getOne()
+        if (!user) throw new BadRequestException("존재하지 않는 사용자입니다")
+
+        return user.saves.map((save) => save.post)
+    }
+
+    async isSaved(sessionId: string, postId: number): Promise<boolean> {
+        const user = await this.getUserBySession(sessionId)
+        if (!user) throw new BadRequestException("존재하지 않는 사용자입니다")
+
+        return await this.saveRepository.createQueryBuilder("save")
+            .leftJoin("save.post", "post")
+            .leftJoin("save.user", "user")
+            .where("user.uid = :uid", { uid: user.uid })
+            .where("post.postId = :postId", { postId })
+            .getExists()
+    }
+    
+    async savePost(sessionId: string, postId: number) {
+        const user = await this.getUserBySession(sessionId)
+        const post = await this.postService.getPost(postId)
+        if (!post) throw new BadRequestException("존재하지 않는 게시물입니다")
+
+        const exist = await this.userRepository.createQueryBuilder("user")
+            .leftJoinAndSelect("user.saves", "save")
+            .leftJoinAndSelect("save.post", "post")
+            .where("user.uid = :uid", { uid: user.uid })
+            .andWhere("post.postId = :postId", { postId })
+            .getExists()
+        if (exist) return
+
+        const newSave = this.saveRepository.create({
+            user: user,
+            post: post
+        })
+        await this.saveRepository.save(newSave)
+    }
+    
+    async deleteSavedPost(sessionId: string, postId: number) {
+        const user = await this.getUserBySession(sessionId)
+        const post = await this.postService.getPost(postId)
+        if (!post) throw new BadRequestException("존재하지 않는 게시물입니다")
+
+        await this.saveRepository.delete({
+            user: user,
+            post: post
+        })
     }
 }

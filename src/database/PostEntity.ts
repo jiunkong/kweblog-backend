@@ -2,6 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn, On
 import { UserEntity } from "./UserEntity";
 import { CommentEntity } from "./CommentEntity";
 import { LikeEntity } from "./LikeEntity";
+import { SaveEntity } from "./SaveEntity";
 
 @Entity({
     name: 'posts'
@@ -27,6 +28,9 @@ export class PostEntity {
 
     @OneToMany(() => LikeEntity, (like) => like.post)
     likes: LikeEntity[]
+
+    @OneToMany(() => SaveEntity, (save) => save.post)
+    saves: SaveEntity[]
 
     @OneToMany(() => CommentEntity, (comment) => comment.post)
     comments: CommentEntity[]
