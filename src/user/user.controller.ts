@@ -95,7 +95,9 @@ export class UserController {
         if (!res) throw new BadRequestException("잘못된 아이디 또는 비밀번호입니다")
 
         response.cookie("sessionId", res.session.sessionId, {
-            httpOnly: true
+            httpOnly: true,
+            sameSite: "none",
+            secure: true
         })
 
         return response.send(res.username)
@@ -184,7 +186,9 @@ export class UserController {
             })
 
             res.cookie("sessionId", result.session.sessionId, {
-                httpOnly: true
+                httpOnly: true,
+                sameSite: "none",
+                secure: true
             })
 
             return res.send(result.username)
