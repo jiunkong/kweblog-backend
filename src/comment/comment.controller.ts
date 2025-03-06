@@ -3,7 +3,6 @@ import { CommentService } from './comment.service';
 import { Request } from 'express';
 import { getSessionId } from 'src/util';
 
-const COMMENT_PAGE_SIZE = 5
 @Controller('comment')
 export class CommentController {
     constructor(private commentService: CommentService) {}

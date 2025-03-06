@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { UserService } from './user.service';
 import { Request, Response } from 'express';
 import * as fs from "fs"
-import { UserEntity } from 'src/database/UserEntity';
 
 interface SignupDTO {
     id: string,
@@ -96,7 +95,7 @@ export class UserController {
 
         response.cookie("sessionId", res.session.sessionId, {
             httpOnly: true,
-            sameSite: "none",
+            sameSite: "strict",
             secure: true
         })
 
@@ -187,7 +186,7 @@ export class UserController {
 
             res.cookie("sessionId", result.session.sessionId, {
                 httpOnly: true,
-                sameSite: "none",
+                sameSite: "strict",
                 secure: true
             })
 
